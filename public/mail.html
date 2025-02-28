@@ -602,7 +602,9 @@
         <!-- 邮件列表内容 -->
         <div id="mail-list" class="content-section">
             <h1>邮件列表</h1>
-            <table class="mail-table" id="mail-table">
+            <div class="no-data" id="no-data-mail">暂无数据</div>
+        </div>
+	<table class="mail-table" id="mail-table">
                 <thead>
                     <tr>
                         <th>发件人</th>
@@ -614,11 +616,9 @@
                 <tbody>
                     <!-- 数据将动态添加到这里 -->
                 </tbody>
-            </table>
-            <div class="no-data" id="no-data-mail">暂无数据</div>
-            <div class="pagination" id="pagination-mail">
+        </table>
+	<div class="pagination" id="pagination-mail">
                 <button onclick="changeMailPage(1)">1</button>
-            </div>
         </div>
     </div>
 
