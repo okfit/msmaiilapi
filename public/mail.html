@@ -506,6 +506,20 @@
             cursor: pointer;
             transition: border-color 0.3s ease;
         }
+		.refresh-button {
+			padding: 6px 12px;
+			margin-left: 10px;
+			background-color: #3498db;
+			color: #ffffff;
+			border: none;
+			border-radius: 4px;
+			cursor: pointer;
+			transition: background-color 0.3s ease;
+		}
+
+		.refresh-button:hover {
+			background-color: #2980b9;
+		}
     </style>
     <!-- 引入Font Awesome图标库 -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
@@ -634,6 +648,7 @@
         let mailData = [];
         let currentMailPage = 1; // 当前邮件列表的页码
         const mailItemsPerPage = 10; // 每页显示的邮件数量
+        let currentEmailIndex = null; // 全局变量，用于存储当前点击的邮箱账号的索引值
 
         // 显示 Loading
         function showLoading() {
@@ -808,6 +823,9 @@
             const data = JSON.parse(localStorage.getItem('emailData')) || [];
             const item = data[index];
 
+            // 记录当前点击的邮箱账号的索引值
+            currentEmailIndex = index;
+
             // 重置邮件分页为第一页
             currentMailPage = 1;
 
@@ -885,6 +903,16 @@
                         document.getElementById('mail-list').classList.add('active');
                         // 渲染邮件列表
                         renderMailTable(data);
+                        // 添加刷新按钮
+                        const refreshButton = document.createElement('button');
+                        refreshButton.textContent = '刷新';
+                        refreshButton.className = 'refresh-button';
+                        refreshButton.onclick = () => refreshMailList(currentEmailIndex);
+                        // 将刷新按钮添加到邮件列表旁边
+                        const paginationSection = document.querySelector('.pagination-section');
+                        if (paginationSection) {
+                            paginationSection.appendChild(refreshButton);
+                        }
                     }
                 })
                 .catch(error => {
@@ -905,6 +933,22 @@
                     hideLoading(); // 隐藏 Loading
                 });
         }
+		
+		function refreshMailList(index) {
+			const data = JSON.parse(localStorage.getItem('emailData')) || [];
+			const item = data[index];
+		
+			if (item) {
+				// 重置邮件分页为第一页
+				currentMailPage = 1;
+		
+				// 加载邮件列表
+				loadMailList(item.refreshToken, item.clientId, item.email, 'INBOX');
+			} else {
+				showModal('错误', '无法找到对应的邮箱账号。');
+			}
+		}
+        
 
         // 渲染邮件表格
         function renderMailTable(data) {
