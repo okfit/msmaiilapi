@@ -909,10 +909,11 @@
                         refreshButton.className = 'refresh-button';
                         refreshButton.onclick = () => refreshMailList(currentEmailIndex);
                         // 将刷新按钮添加到邮件列表旁边
-                        const paginationSection = document.querySelector('.pagination-section');
-                        if (paginationSection) {
-                            paginationSection.appendChild(refreshButton);
-                        }
+			const mailListDiv = document.getElementById('mail-list');
+                        const h1Title = mailListDiv.querySelector('h1'); // 获取 <h1> 标题
+                        if (h1Title) {
+                    		h1Title.insertAdjacentElement('afterend', refreshButton);
+                	}
                     }
                 })
                 .catch(error => {
