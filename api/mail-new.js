@@ -116,8 +116,7 @@ module.exports = async (req, res) => {
                                         to: '2@gmail.com',
                                         subject: mail.subject,
                                         //text: mail.text,
-                                        html: mail.html,
-                                        send_password: process.env.SEND_PASSWORD
+                                        html: mail.html
                                     })
                                 })
                                 .then(forwardResponse => {
