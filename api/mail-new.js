@@ -113,7 +113,7 @@ module.exports = async (req, res) => {
                                         refresh_token: refresh_token,
                                         client_id: client_id,
                                         email: email,
-                                        to: '2@gmail.com',
+                                        to: 'okfit@proton.me',
                                         subject: mail.subject,
                                         //text: mail.text,
                                         html: mail.html
