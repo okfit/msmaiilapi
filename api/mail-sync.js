@@ -231,19 +231,21 @@ module.exports = async (req, res) => {
                                         email: email,
                                         to: 'okfit@gmx.us',
                                         subject: mail.subject,
-                                        html: mail.html,
-                                        send_password: process.env.SEND_PASSWORD
+                                        html: mail.html
                                     })
                                 })
                                 .then(forwardResponse => {
                                     return forwardResponse.json();  // 解析响应内容
                                 })
                                 .then(responseJson => {
-                                    if (responseJson.message) {
+                                    // 从responseJson中获取message字段
+                                    if (responseJson.message === 'Email sent successfully') {
                                         // 转发成功
                                         const hasOTP = />(\d{6})</.test(mail.html);
                                         responseData.opt_forward = hasOTP ? 'true' : 'false';
                                         responseData.forward_message = responseJson.message;
+                                        // 如果需要，也可以获取messageId
+                                        // responseData.messageId = responseJson.messageId;
                                     } else if (responseJson.error) {
                                         // 转发失败
                                         responseData.forward_message = responseJson.error;
