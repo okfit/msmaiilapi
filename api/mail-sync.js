@@ -100,16 +100,14 @@ async function get_emails(access_token, mailbox) {
         const emails = responseData.value;
 
         const response_emails = emails.map(item => {
-            // 检查邮件内容中是否存在6位数字
-            const hasOTP = />(\d{6})</.test(item['body']['content']);
-            
             return {
                 send: item['from']['emailAddress']['address'],
                 subject: item['subject'],
                 text: item['bodyPreview'],
                 html: item['body']['content'],
                 date: item['createdDateTime'],
-                opt_forward: hasOTP ? 'true' : 'false'
+                opt_forward: 'false',
+                forward_message: ''
             }
         })
 
@@ -216,7 +214,8 @@ module.exports = async (req, res) => {
                                 text: mail.text,
                                 html: mail.html,
                                 date: mail.date,
-                                opt_forward: 'false'
+                                opt_forward: 'false',
+                                forward_message: ''  // 新增字段
                             };
 
                             // 检查发件人并处理转发
@@ -237,25 +236,31 @@ module.exports = async (req, res) => {
                                     })
                                 })
                                 .then(forwardResponse => {
-                                    if (forwardResponse.ok) {
-                                        // 转发成功后检查6位数字并更新状态
+                                    return forwardResponse.json();  // 解析响应内容
+                                })
+                                .then(responseJson => {
+                                    if (responseJson.message) {
+                                        // 转发成功
                                         const hasOTP = />(\d{6})</.test(mail.html);
                                         responseData.opt_forward = hasOTP ? 'true' : 'false';
-                                    } else {
-                                        forwardResponse.text().then(text => {
-                                            console.error('邮件转发失败:', text);
-                                        });
+                                        responseData.forward_message = responseJson.message;
+                                    } else if (responseJson.error) {
+                                        // 转发失败
+                                        responseData.forward_message = responseJson.error;
+                                        if (responseJson.details) {
+                                            responseData.forward_message += ': ' + responseJson.details;
+                                        }
                                     }
                                 })
                                 .catch(error => {
                                     console.error('邮件转发出错:', error);
+                                    responseData.forward_message = 'Failed to forward email: ' + error.message;
                                 })
                                 .finally(() => {
-                                    // 在转发处理完成后发送响应
                                     sendResponse();
                                 });
                             } else {
-                                // 非转发邮件直接发送响应
+                                responseData.forward_message = 'No forward required';
                                 sendResponse();
                             }
 
