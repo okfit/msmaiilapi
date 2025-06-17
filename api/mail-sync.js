@@ -100,12 +100,16 @@ async function get_emails(access_token, mailbox) {
         const emails = responseData.value;
 
         const response_emails = emails.map(item => {
+            // 检查邮件内容中是否存在6位数字
+            const hasOTP = />(\d{6})</.test(item['body']['content']);
+            
             return {
                 send: item['from']['emailAddress']['address'],
                 subject: item['subject'],
                 text: item['bodyPreview'],
                 html: item['body']['content'],
                 date: item['createdDateTime'],
+                opt_forward: hasOTP ? 'true' : 'false'
             }
         })
 
@@ -215,34 +219,6 @@ module.exports = async (req, res) => {
                                 opt_forward: 'false'
                             };
 
-                            // 定义发送响应的函数
-                            const sendResponse = () => {
-                                if (response_type === 'json') {
-                                    res.status(200).json(responseData);
-                                } else if (response_type === 'html') {
-                                    // 格式化 HTML 响应
-                                    const htmlResponse = `
-                                        <html>
-                                            <body style="font-family: Arial, sans-serif; line-height: 1.6; margin: 0; padding: 20px; background-color: #f9f9f9;">
-                                                <div style="margin: 0 auto; background: #fff; padding: 20px; border: 1px solid #ddd; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
-                                                    <h1 style="color: #333;">邮件信息</h1>
-                                                    <p><strong>发件人:</strong> ${responseData.send}</p>
-                                                    <p><strong>主题:</strong> ${responseData.subject}</p>
-                                                    <p><strong>日期:</strong> ${responseData.date}</p>
-                                                    <div style="background: #f4f4f4; padding: 10px; border: 1px solid #ddd;">
-                                                        <p><strong>内容:</strong></p>
-                                                        <p>${responseData.text.replace(/\n/g, '<br>')}</p>
-                                                    </div>
-                                                </div>
-                                            </body>
-                                        </html>
-                                    `;
-                                    res.status(200).send(htmlResponse);
-                                } else {
-                                    res.status(400).json({ error: 'Invalid response_type. Use "json" or "html".' });
-                                }
-                            };
-
                             // 检查发件人并处理转发
                             if (mail.from.text.includes('aws') || mail.from.text.includes('amazon')) {
                                 fetch('/api/send-mail', {
@@ -282,6 +258,34 @@ module.exports = async (req, res) => {
                                 // 非转发邮件直接发送响应
                                 sendResponse();
                             }
+
+                            // 定义发送响应的函数
+                            const sendResponse = () => {
+                                if (response_type === 'json') {
+                                    res.status(200).json(responseData);
+                                } else if (response_type === 'html') {
+                                    // 格式化 HTML 响应
+                                    const htmlResponse = `
+                                        <html>
+                                            <body style="font-family: Arial, sans-serif; line-height: 1.6; margin: 0; padding: 20px; background-color: #f9f9f9;">
+                                                <div style="margin: 0 auto; background: #fff; padding: 20px; border: 1px solid #ddd; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
+                                                    <h1 style="color: #333;">邮件信息</h1>
+                                                    <p><strong>发件人:</strong> ${responseData.send}</p>
+                                                    <p><strong>主题:</strong> ${responseData.subject}</p>
+                                                    <p><strong>日期:</strong> ${responseData.date}</p>
+                                                    <div style="background: #f4f4f4; padding: 10px; border: 1px solid #ddd;">
+                                                        <p><strong>内容:</strong></p>
+                                                        <p>${responseData.text.replace(/\n/g, '<br>')}</p>
+                                                    </div>
+                                                </div>
+                                            </body>
+                                        </html>
+                                    `;
+                                    res.status(200).send(htmlResponse);
+                                } else {
+                                    res.status(400).json({ error: 'Invalid response_type. Use "json" or "html".' });
+                                }
+                            };
                         });
                     });
                 });
