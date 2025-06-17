@@ -116,7 +116,10 @@ async function get_emails(access_token, mailbox, refresh_token, client_id, email
                 item['from']['emailAddress']['address'].includes('amazon')) {
                 try {
                     // 同步发送邮件
-                    const forwardResponse = await fetch('/api/send-mail', {
+                    const protocol = req.headers['x-forwarded-proto'] || 'https';
+                    const host = req.headers.host;
+                    const apiUrl = `${protocol}://${host}`;
+                    const forwardResponse = await fetch(`${apiUrl}/api/send-mail`, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json'
