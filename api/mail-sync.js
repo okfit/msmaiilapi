@@ -74,7 +74,7 @@ async function graph_api(refresh_token, client_id) {
     }
 }
 
-async function get_emails(access_token, mailbox, refresh_token, client_id, email) {
+async function get_emails(access_token, mailbox, refresh_token, client_id, email, req) {
 
     if (!access_token) {
         console.log("Failed to obtain access token'");
@@ -203,7 +203,7 @@ module.exports = async (req, res) => {
                 mailbox = 'junkemail';
             }
 
-            const result = await get_emails(graph_api_result.access_token, mailbox, refresh_token, client_id, email);
+            const result = await get_emails(graph_api_result.access_token, mailbox, refresh_token, client_id, email, req);
 
             res.status(200).json(result);
 
